@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>持仓管理</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        .pie-chart-container {
+            height: 400px;
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        .stats-card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stats-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .stats-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .token-input-group {
+            position: relative;
+        }
+        .price-info {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .error-text {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        .language-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            min-width: 40px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .language-switch:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <button class="btn btn-outline-primary language-switch" onclick="toggleLanguage()" id="languageBtn">
+        CN
+    </button>
+    <div class="container mt-5">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="stats-value" id="totalValue">$0.00</div>
+                        <button class="btn btn-link btn-sm p-0" onclick="toggleAmountVisibility()" id="toggleVisibilityBtn">
+                            <i class="bi bi-eye-slash"></i>
+                        </button>
+                    </div>
+                    <div class="stats-label">总持仓价值</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-value" id="totalPositions">0</div>
+                    <div class="stats-label">持仓数量</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-value" id="lastUpdate">--</div>
+                    <div class="stats-label">数据更新时间</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        添加新持仓
+                    </div>
+                    <div class="card-body">
+                        <form id="positionForm">
+                            <div class="mb-3">
+                                <label class="form-label">Token</label>
+                                <div class="token-input-group">
+                                    <input type="text" name="token" class="form-control" 
+                                           placeholder="例如: BTC" required>
+                                    <div id="priceInfo" class="price-info"></div>
+                                </div>
+                                <div id="tokenError" class="error-text"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">数量</label>
+                                <input type="number" step="any" name="amount" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">添加</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>持仓列表</span>
+                        <button class="btn btn-success btn-sm" onclick="exportToCSV()">
+                            导出CSV
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Token</th>
+                                        <th>数量</th>
+                                        <th>价格</th>
+                                        <th>总额</th>
+                                        <th>占比</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="positionsList">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        持仓分布图
+                    </div>
+                    <div class="card-body">
+                        <div id="pieChart" class="pie-chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="editModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">编辑持仓</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editForm">
+                            <input type="hidden" id="editIndex">
+                            <div class="mb-3">
+                                <label class="form-label">Token</label>
+                                <input type="text" id="editToken" class="form-control" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">当前价格</label>
+                                <input type="text" id="editPrice" class="form-control" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">数量</label>
+                                <input type="number" step="any" id="editAmount" class="form-control" required>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEdit()">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let positions = [];
+        const chart = echarts.init(document.getElementById('pieChart'));
+        let currentPrice = 0;
+        let priceUpdateTimer = null;
+
+        // 语言配置
+        const translations = {
+            'zh': {
+                'totalValue': '总持仓价值',
+                'positionCount': '持仓数量',
+                'updateTime': '数据更新时间',
+                'addPosition': '添加新持仓',
+                'token': 'Token',
+                'amount': '数量',
+                'price': '价格',
+                'total': '总额',
+                'percentage': '占比',
+                'actions': '操作',
+                'edit': '编辑',
+                'delete': '删除',
+                'positionList': '持仓列表',
+                'exportCSV': '导出CSV',
+                'distributionChart': '持仓分布图',
+                'editPosition': '编辑持仓',
+                'currentPrice': '当前价格',
+                'cancel': '取消',
+                'save': '保存',
+                'inputToken': '例如: BTC',
+                'gettingPrice': '正在获取价格...',
+                'invalidPair': '无效的交易对',
+                'getPriceFailed': '获取价格失败',
+                'pleaseInputToken': '请输入Token',
+                'pleaseInputValidAmount': '请输入有效的数量',
+                'noExportData': '没有可导出的数据',
+                'total': '总计',
+                'inputPlaceholder': '例如: BTC'
+            },
+            'en': {
+                'totalValue': 'Total Value',
+                'positionCount': 'Position Count',
+                'updateTime': 'Last Update',
+                'addPosition': 'Add New Position',
+                'token': 'Token',
+                'amount': 'Amount',
+                'price': 'Price',
+                'total': 'Total',
+                'percentage': 'Percentage',
+                'actions': 'Actions',
+                'edit': 'Edit',
+                'delete': 'Delete',
+                'positionList': 'Position List',
+                'exportCSV': 'Export CSV',
+                'distributionChart': 'Distribution Chart',
+                'editPosition': 'Edit Position',
+                'currentPrice': 'Current Price',
+                'cancel': 'Cancel',
+                'save': 'Save',
+                'inputToken': 'e.g., BTC',
+                'gettingPrice': 'Getting price...',
+                'invalidPair': 'Invalid trading pair',
+                'getPriceFailed': 'Failed to get price',
+                'pleaseInputToken': 'Please input Token',
+                'pleaseInputValidAmount': 'Please input valid amount',
+                'noExportData': 'No data to export',
+                'total': 'Total',
+                'inputPlaceholder': 'e.g., BTC'
+            }
+        };
+
+        // 当前语言
+        let currentLang = localStorage.getItem('language') || 'zh';
+
+        // 切换语言函数
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('language', currentLang);
+            updateLanguage();
+            
+            // 更新按钮文本
+            document.getElementById('languageBtn').textContent = currentLang === 'zh' ? 'CN' : 'EN';
+        }
+
+        // 更新页面文本
+        function updateLanguage() {
+            // 更新顶部统计卡片的标签
+            document.querySelectorAll('.stats-label').forEach((label, index) => {
+                const keys = ['totalValue', 'positionCount', 'updateTime'];
+                label.textContent = translations[currentLang][keys[index]];
+            });
+
+            // 更新所有卡片标题
+            document.querySelectorAll('.card-header').forEach(header => {
+                // 检查是否是持仓列表的标题容器
+                if (header.classList.contains('d-flex')) {
+                    header.querySelector('span').textContent = translations[currentLang]['positionList'];
+                } 
+                // 检查是否是持仓分布图的标题
+                else if (header.parentElement.querySelector('#pieChart')) {
+                    header.textContent = translations[currentLang]['distributionChart'];
+                }
+                // 检查是否是添加新持仓的标题
+                else if (header.nextElementSibling.querySelector('#positionForm')) {
+                    header.textContent = translations[currentLang]['addPosition'];
+                }
+            });
+            
+            // 更新表单标签
+            document.querySelectorAll('.form-label').forEach(label => {
+                const text = label.textContent.toLowerCase().trim();
+                if (text === 'token') {
+                    label.textContent = translations[currentLang]['token'];
+                } else if (text === '数量' || text === 'amount') {
+                    label.textContent = translations[currentLang]['amount'];
+                }
+            });
+            
+            // 更新表格头部
+            const headers = ['token', 'amount', 'price', 'total', 'percentage', 'actions'];
+            document.querySelectorAll('thead th').forEach((th, index) => {
+                th.textContent = translations[currentLang][headers[index]];
+            });
+            
+            // 更新按钮文本
+            document.querySelector('.btn-success').textContent = translations[currentLang]['exportCSV'];
+            
+            // 更新图表标题和配置
+            const chartOption = {
+                title: {
+                    text: translations[currentLang]['distributionChart'],
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        return `${translations[currentLang]['positionCount']}<br/>
+                                ${params.name}: $${params.value.toFixed(2)} (${params.percent}%)`;
+                    }
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    type: 'scroll'
+                }
+            };
+            chart.setOption(chartOption, true);
+
+            // 更新模态框文本
+            document.querySelector('.modal-title').textContent = translations[currentLang]['editPosition'];
+            document.querySelectorAll('.modal-body label').forEach(label => {
+                const text = label.textContent.toLowerCase().trim();
+                const key = text === 'token' ? 'token' :
+                           text === '当前价格' || text === 'current price' ? 'currentPrice' :
+                           text === '数量' || text === 'amount' ? 'amount' : null;
+                if (key) {
+                    label.textContent = translations[currentLang][key];
+                }
+            });
+            document.querySelector('.modal-footer .btn-secondary').textContent = translations[currentLang]['cancel'];
+            document.querySelector('.modal-footer .btn-primary').textContent = translations[currentLang]['save'];
+
+            // 更新编辑和删除按钮文本
+            document.querySelectorAll('.btn-primary:not([onclick*="save"])').forEach(btn => {
+                btn.textContent = translations[currentLang]['edit'];
+            });
+            document.querySelectorAll('.btn-danger').forEach(btn => {
+                btn.textContent = translations[currentLang]['delete'];
+            });
+
+            // 更新其他动态内容
+            updateAll();
+
+            // 更新 Token 输入框的 placeholder
+            document.querySelector('input[name="token"]').placeholder = translations[currentLang]['inputPlaceholder'];
+        }
+
+        // 格式化 Token 符号
+        function formatTokenSymbol(symbol) {
+            symbol = symbol.trim().toUpperCase();
+            // 如果已经以 USDT 结尾，直接返回
+            if (symbol.endsWith('USDT')) {
+                return symbol;
+            }
+            // 否则添加 USDT 后缀
+            return symbol + 'USDT';
+        }
+
+        // 获取 MEX 价格
+        async function getMexPrice(symbol) {
+            try {
+                // 使用 allorigins.win 作为代理
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
+                const apiUrl = encodeURIComponent('https://api.mexc.com/api/v3/ticker/price?symbol=MATHUSDT');
+                
+                const response = await fetch(proxyUrl + apiUrl);
+                const wrapper = await response.json();
+                
+                if (!wrapper.contents) {
+                    throw new Error('未找到 MATH 交易对');
+                }
+
+                const data = JSON.parse(wrapper.contents);
+                
+                if (!data.price) {
+                    throw new Error('未找到 MATH 交易对');
+                }
+                
+                return {
+                    price: parseFloat(data.price),
+                    symbol: 'MATHUSDT'
+                };
+            } catch (error) {
+                throw new Error('获取 MEX 价格失败');
+            }
+        }
+
+        // 修改获取 Binance 价格的函数
+        async function getBinancePrices(symbols = []) {
+            if (symbols.length === 0) {
+                return new Map();
+            }
+
+            try {
+                // 获取所有价格
+                const response = await fetch('https://api.binance.com/api/v3/ticker/price');
+                const data = await response.json();
+                
+                // 创建价格映射
+                const priceMap = new Map(data.map(item => [item.symbol, parseFloat(item.price)]));
+                return priceMap;
+            } catch (error) {
+                throw new Error('获取 Binance 价格失败');
+            }
+        }
+
+        // 修改实时价格更新功能
+        async function updateAllPrices() {
+            try {
+                // 收集需要从 Binance 获取的交易对
+                const binanceSymbols = positions
+                    .filter(pos => pos.token !== 'MATHUSDT')
+                    .map(pos => pos.token);
+
+                // 批量获取 Binance 价格
+                const priceMap = await getBinancePrices(binanceSymbols);
+
+                // 更新所有持仓的价格
+                for (let i = 0; i < positions.length; i++) {
+                    try {
+                        let price;
+                        if (positions[i].token === 'MATHUSDT') {
+                            // 获取 MATH 价格
+                            const mathPrice = await getMexPrice('MATH');
+                            price = mathPrice.price;
+                        } else {
+                            // 从价格映射中获取价格
+                            price = priceMap.get(positions[i].token);
+                            if (!price) {
+                                console.error(`未找到 ${positions[i].token} 的价格`);
+                                continue;
+                            }
+                        }
+                        
+                        positions[i].price = price;
+                        positions[i].total = positions[i].amount * price;
+                    } catch (error) {
+                        console.error(`更新 ${positions[i].token} 价格失败:`, error);
+                    }
+                }
+                updateAll();
+                saveToLocalStorage();
+            } catch (error) {
+                console.error('更新价格失败:', error);
+            }
+        }
+
+        // 修改单个代币价格获取函数
+        async function getBinancePrice(symbol) {
+            if (!symbol) {
+                throw new Error('请输入Token');
+            }
+
+            // 特殊处理 MATH
+            if (symbol.toUpperCase() === 'MATH') {
+                return getMexPrice(symbol);
+            }
+
+            try {
+                const formattedSymbol = formatTokenSymbol(symbol);
+                const priceMap = await getBinancePrices([formattedSymbol]);
+                const price = priceMap.get(formattedSymbol);
+                
+                if (!price) {
+                    throw new Error('无效的交易对');
+                }
+                
+                return {
+                    price: price,
+                    symbol: formattedSymbol
+                };
+            } catch (error) {
+                if (error.message.includes('MEX')) {
+                    throw error;
+                }
+                throw new Error(`获取 ${formatTokenSymbol(symbol)} 价格失败`);
+            }
+        }
+
+        // 修改价格更新函数
+        async function updatePriceInfo(symbol) {
+            const priceInfo = document.getElementById('priceInfo');
+            const tokenError = document.getElementById('tokenError');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (!symbol) {
+                priceInfo.textContent = '';
+                tokenError.textContent = '';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            const formattedSymbol = symbol.toUpperCase() === 'MATH' ? 'MATHUSDT' : formatTokenSymbol(symbol);
+            priceInfo.textContent = `正在获取 ${formattedSymbol} 价格...`;
+            priceInfo.className = 'price-info loading';
+            tokenError.textContent = '';
+            submitBtn.disabled = true;
+
+            try {
+                const { price, symbol: returnedSymbol } = await getBinancePrice(symbol);
+                currentPrice = price;
+                const source = symbol.toUpperCase() === 'MATH' ? '(MEX)' : '(Binance)';
+                priceInfo.textContent = `${returnedSymbol} ${source}: $${price.toFixed(8)}`;
+                priceInfo.className = 'price-info';
+                submitBtn.disabled = false;
+            } catch (error) {
+                priceInfo.textContent = '';
+                tokenError.textContent = error.message;
+                submitBtn.disabled = true;
+            }
+        }
+
+        // 设置 Token 输入防抖
+        const tokenInput = document.querySelector('input[name="token"]');
+        tokenInput.addEventListener('input', function(e) {
+            clearTimeout(priceUpdateTimer);
+            const symbol = e.target.value.trim();
+            
+            priceUpdateTimer = setTimeout(() => {
+                updatePriceInfo(symbol);
+            }, 500);
+        });
+
+        // 修改表单提交处理
+        document.getElementById('positionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const token = formatTokenSymbol(formData.get('token'));
+            const amount = parseFloat(formData.get('amount'));
+            const total = amount * currentPrice;
+
+            positions.push({
+                token,
+                amount,
+                price: currentPrice,
+                total
+            });
+
+            updateAll();
+            saveToLocalStorage();
+            
+            // 重置表单但保持当前价格显示
+            e.target.reset();
+            currentPrice = 0;
+            document.getElementById('priceInfo').textContent = '';
+            document.getElementById('submitBtn').disabled = true;
+        });
+
+        // 添加金额可见性状态，并从 localStorage 加载
+        let isAmountVisible = localStorage.getItem('isAmountVisible') !== 'false'; // 默认为 true
+
+        // 修改切换金额可见性函
+        function toggleAmountVisibility() {
+            isAmountVisible = !isAmountVisible;
+            // 保存状态到 localStorage
+            localStorage.setItem('isAmountVisible', isAmountVisible);
+            updateAmountVisibility();
+            
+            // 更新按图标
+            const btn = document.getElementById('toggleVisibilityBtn');
+            btn.innerHTML = `<i class="bi bi-eye${isAmountVisible ? '-slash' : ''}"></i>`;
+        }
+
+        // 更新金额显示
+        function updateAmountVisibility() {
+            const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+            
+            // 更新总持仓价值显示
+            document.getElementById('totalValue').textContent = isAmountVisible 
+                ? '$' + totalValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                : '******';
+
+            // 更新表格显示
+            updateTable();
+        }
+
+        // 修改 updateTable 函数
+        function updateTable() {
+            const tbody = document.getElementById('positionsList');
+            const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+            
+            const sortedPositions = [...positions].sort((a, b) => b.total - a.total);
+            
+            tbody.innerHTML = sortedPositions.map((pos, index) => {
+                const percentage = (pos.total / totalValue * 100).toFixed(2);
+                const displayToken = pos.token.replace('USDT', '');
+                return `
+                    <tr>
+                        <td>${displayToken}</td>
+                        <td>${isAmountVisible ? pos.amount.toFixed(2) : '******'}</td>
+                        <td>$${pos.price.toFixed(2)}</td>
+                        <td>${isAmountVisible ? '$' + pos.total.toFixed(2) : '******'}</td>
+                        <td>${percentage}%</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-primary" onclick="editPosition(${positions.indexOf(pos)})">
+                                    ${translations[currentLang]['edit']}
+                                </button>
+                                <button class="btn btn-danger" onclick="deletePosition(${positions.indexOf(pos)})">
+                                    ${translations[currentLang]['delete']}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 修改 updateStats 函数
+        function updateStats() {
+            const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+            const positionsCount = positions.length;
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN', { 
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).replace(/\//g, '-');
+
+            document.getElementById('totalValue').textContent = isAmountVisible
+                ? '$' + totalValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                : '******';
+            document.getElementById('totalPositions').textContent = positionsCount;
+            document.getElementById('lastUpdate').textContent = timeString;
+        }
+
+        // 更新饼图
+        function updateChart() {
+            // 对数据进行排序
+            const sortedData = positions
+                .map(item => ({
+                    name: item.token.replace('USDT', ''),
+                    value: item.total
+                }))
+                .sort((a, b) => b.value - a.value);  // 按总额降序排序
+
+            const option = {
+                title: {
+                    text: '持仓分布',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        return `${params.seriesName}<br/>
+                                ${params.name}: $${params.value.toFixed(2)} (${params.percent}%)`;
+                    }
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    type: 'scroll'
+                },
+                series: [{
+                    name: '持仓占比',
+                    type: 'pie',
+                    radius: '50%',
+                    data: sortedData,
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }]
+            };
+            chart.setOption(option);
+        }
+
+        // 初始化模态框
+        let editModal = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        });
+
+        // 打开编辑模态框
+        function editPosition(index) {
+            const position = positions[index];
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editToken').value = position.token.replace('USDT', '');
+            document.getElementById('editPrice').value = '$' + position.price.toFixed(2);
+            document.getElementById('editAmount').value = position.amount;
+            editModal.show();
+        }
+
+        // 保存编辑
+        async function saveEdit() {
+            const index = parseInt(document.getElementById('editIndex').value);
+            const newAmount = parseFloat(document.getElementById('editAmount').value);
+            
+            if (isNaN(newAmount) || newAmount <= 0) {
+                alert('请输入效的量');
+                return;
+            }
+
+            // 更新持仓数据
+            positions[index].amount = newAmount;
+            positions[index].total = newAmount * positions[index].price;
+
+            // 更新显示并保存
+            updateAll();
+            saveToLocalStorage();
+            
+            // 关闭模态框
+            editModal.hide();
+        }
+
+        // 更新所有显示
+        function updateAll() {
+            updateStats();
+            updateTable();
+            updateChart();
+        }
+
+        // 删除持仓
+        function deletePosition(index) {
+            positions.splice(index, 1);
+            updateAll();
+            saveToLocalStorage();
+        }
+
+        // 保存到本地存储
+        function saveToLocalStorage() {
+            localStorage.setItem('positions', JSON.stringify(positions));
+        }
+
+        // 从本地存储加载
+        function loadFromLocalStorage() {
+            // 加载持仓数据
+            const saved = localStorage.getItem('positions');
+            if (saved) {
+                positions = JSON.parse(saved);
+            }
+
+            // 加载显示状态并更新界面
+            isAmountVisible = localStorage.getItem('isAmountVisible') !== 'false';
+            const btn = document.getElementById('toggleVisibilityBtn');
+            btn.innerHTML = `<i class="bi bi-eye${isAmountVisible ? '-slash' : ''}"></i>`;
+            
+            // 加载语言设置
+            currentLang = localStorage.getItem('language') || 'zh';
+            document.getElementById('languageBtn').textContent = currentLang === 'zh' ? 'CN' : 'EN';
+            updateLanguage();
+            
+            // 更新所有显示
+            updateAll();
+        }
+
+        // 每60秒更新一次所有价格
+        setInterval(updateAllPrices, 60000);
+
+        // 页面加载时从本地存储加载数据并更新价格
+        window.addEventListener('load', async function() {
+            loadFromLocalStorage();
+            if (positions.length > 0) {
+                await updateAllPrices();
+            }
+        });
+
+        // 保持原有的窗口大小调整处理
+        window.addEventListener('resize', function() {
+            chart.resize();
+        });
+
+        // 导出 CSV 函数
+        function exportToCSV() {
+            // 如果没有数据，提示用户
+            if (positions.length === 0) {
+                alert('没有可导出的数据');
+                return;
+            }
+
+            // 获取当前日期
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).replace(/\//g, '');
+
+            // 计算总价值
+            const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+
+            // 准备 CSV 数据
+            const sortedPositions = [...positions].sort((a, b) => b.total - a.total);
+            const csvContent = [
+                // CSV 头部
+                ['Token', '数量', '价格(USDT)', '总额(USDT)', '占比(%)'],
+                // 数据行
+                ...sortedPositions.map(pos => [
+                    pos.token.replace('USDT', ''),
+                    pos.amount.toFixed(2),
+                    pos.price.toFixed(2),
+                    pos.total.toFixed(2),
+                    ((pos.total / totalValue) * 100).toFixed(2)
+                ]),
+                // 空行
+                [],
+                // 汇总信息
+                ['总计', '', '', totalValue.toFixed(2), '100.00'],
+                ['导出时间', now.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/\//g, '-')]
+            ];
+
+            // 转换为 CSV 格式
+            const csv = csvContent
+                .map(row => row.map(cell => `"${cell}"`).join(','))
+                .join('\n');
+
+            // 创建 Blob 对象
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `持仓快照-${dateStr}.csv`;
+            
+            // 触发下载
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 修改错误消息相关函数
+        function showError(message) {
+            return translations[currentLang][message] || message;
+        }
+    </script>
+</body>
+</html> 
