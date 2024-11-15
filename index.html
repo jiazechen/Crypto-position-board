@@ -71,6 +71,11 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        .stats-value-cny {
+            font-size: 1rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -82,7 +87,10 @@
             <div class="col-md-4">
                 <div class="stats-card">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div class="stats-value" id="totalValue">$0.00</div>
+                        <div>
+                            <div class="stats-value" id="totalValue">$0.00</div>
+                            <div class="stats-value-cny" id="totalValueCNY" style="font-size: 1rem; color: #6c757d;">¥0.00</div>
+                        </div>
                         <button class="btn btn-link btn-sm p-0" onclick="toggleAmountVisibility()" id="toggleVisibilityBtn">
                             <i class="bi bi-eye-slash"></i>
                         </button>
@@ -120,12 +128,21 @@
                                     <div id="priceInfo" class="price-info"></div>
                                 </div>
                                 <div id="tokenError" class="error-text"></div>
+                                <div id="manualPriceInput" class="mt-2 d-none">
+                                    <div class="input-group">
+                                        <input type="number" step="any" class="form-control" id="manualPrice" 
+                                               placeholder="请输入价格">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="setManualPrice()">
+                                            确认价格
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">数量</label>
                                 <input type="number" step="any" name="amount" class="form-control" required>
                             </div>
-                            <button type="submit" class="btn btn-primary" id="submitBtn">添加</button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">新增</button>
                         </form>
                     </div>
                 </div>
@@ -207,6 +224,7 @@
         const chart = echarts.init(document.getElementById('pieChart'));
         let currentPrice = 0;
         let priceUpdateTimer = null;
+        let usdtCnyRate = 7.20; // 默认汇率
 
         // 语言配置
         const translations = {
@@ -238,7 +256,11 @@
                 'pleaseInputValidAmount': '请输入有效的数量',
                 'noExportData': '没有可导出的数据',
                 'total': '总计',
-                'inputPlaceholder': '例如: BTC'
+                'inputPlaceholder': '例如: BTC',
+                'add': '添加',
+                'manualPriceInput': '请输入价格',
+                'confirmPrice': '确认价格',
+                'getPriceFailed': '获取价格失败，请手动输入价格'
             },
             'en': {
                 'totalValue': 'Total Value',
@@ -268,7 +290,11 @@
                 'pleaseInputValidAmount': 'Please input valid amount',
                 'noExportData': 'No data to export',
                 'total': 'Total',
-                'inputPlaceholder': 'e.g., BTC'
+                'inputPlaceholder': 'e.g., BTC',
+                'add': 'Add',
+                'manualPriceInput': 'Enter price',
+                'confirmPrice': 'Confirm',
+                'getPriceFailed': 'Failed to get price, please enter manually'
             }
         };
 
@@ -309,7 +335,7 @@
                 }
             });
             
-            // 更新表单标签
+            // 新表单标签
             document.querySelectorAll('.form-label').forEach(label => {
                 const text = label.textContent.toLowerCase().trim();
                 if (text === 'token') {
@@ -376,6 +402,13 @@
 
             // 更新 Token 输入框的 placeholder
             document.querySelector('input[name="token"]').placeholder = translations[currentLang]['inputPlaceholder'];
+
+            // 更新提交按钮文本
+            document.getElementById('submitBtn').textContent = translations[currentLang]['add'];
+
+            // 更新手动价格输入相关文本
+            document.getElementById('manualPrice').placeholder = translations[currentLang]['manualPriceInput'];
+            document.querySelector('#manualPriceInput button').textContent = translations[currentLang]['confirmPrice'];
         }
 
         // 格式化 Token 符号
@@ -491,15 +524,16 @@
 
             try {
                 const formattedSymbol = formatTokenSymbol(symbol);
-                const priceMap = await getBinancePrices([formattedSymbol]);
-                const price = priceMap.get(formattedSymbol);
+                // 直接获取单个交易对的价格
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${formattedSymbol}`);
+                const data = await response.json();
                 
-                if (!price) {
+                if (data.code) {
                     throw new Error('无效的交易对');
                 }
                 
                 return {
-                    price: price,
+                    price: parseFloat(data.price),
                     symbol: formattedSymbol
                 };
             } catch (error) {
@@ -515,11 +549,13 @@
             const priceInfo = document.getElementById('priceInfo');
             const tokenError = document.getElementById('tokenError');
             const submitBtn = document.getElementById('submitBtn');
+            const manualPriceInput = document.getElementById('manualPriceInput');
 
             if (!symbol) {
                 priceInfo.textContent = '';
                 tokenError.textContent = '';
                 submitBtn.disabled = true;
+                manualPriceInput.classList.add('d-none');
                 return;
             }
 
@@ -528,6 +564,7 @@
             priceInfo.className = 'price-info loading';
             tokenError.textContent = '';
             submitBtn.disabled = true;
+            manualPriceInput.classList.add('d-none');
 
             try {
                 const { price, symbol: returnedSymbol } = await getBinancePrice(symbol);
@@ -536,11 +573,35 @@
                 priceInfo.textContent = `${returnedSymbol} ${source}: $${price.toFixed(8)}`;
                 priceInfo.className = 'price-info';
                 submitBtn.disabled = false;
+                manualPriceInput.classList.add('d-none');
             } catch (error) {
-                priceInfo.textContent = '';
+                priceInfo.textContent = translations[currentLang]['getPriceFailed'];
+                priceInfo.className = 'price-info text-danger';
                 tokenError.textContent = error.message;
+                manualPriceInput.classList.remove('d-none');
                 submitBtn.disabled = true;
             }
+        }
+
+        // 手动设置价格函数
+        function setManualPrice() {
+            const manualPrice = parseFloat(document.getElementById('manualPrice').value);
+            if (isNaN(manualPrice) || manualPrice <= 0) {
+                alert(translations[currentLang]['pleaseInputValidAmount']);
+                return;
+            }
+
+            currentPrice = manualPrice;
+            const tokenInput = document.querySelector('input[name="token"]');
+            const formattedSymbol = formatTokenSymbol(tokenInput.value);
+            
+            const priceInfo = document.getElementById('priceInfo');
+            priceInfo.textContent = `${formattedSymbol} (Manual): $${manualPrice.toFixed(8)}`;
+            priceInfo.className = 'price-info text-warning';
+            
+            document.getElementById('tokenError').textContent = '';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('manualPriceInput').classList.add('d-none');
         }
 
         // 设置 Token 输入防抖
@@ -580,7 +641,7 @@
             document.getElementById('submitBtn').disabled = true;
         });
 
-        // 添加金额可见性状态，并从 localStorage 加载
+        // 添加金额可见状态，并从 localStorage 加载
         let isAmountVisible = localStorage.getItem('isAmountVisible') !== 'false'; // 默认为 true
 
         // 修改切换金额可见性函
@@ -595,54 +656,29 @@
             btn.innerHTML = `<i class="bi bi-eye${isAmountVisible ? '-slash' : ''}"></i>`;
         }
 
-        // 更新金额显示
+        // ���改 updateAmountVisibility 函数
         function updateAmountVisibility() {
             const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+            const totalValueCNY = totalValue * usdtCnyRate;
             
-            // 更新总持仓价值显示
+            // 更新美元总值显示
             document.getElementById('totalValue').textContent = isAmountVisible 
                 ? '$' + totalValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                : '******';
+
+            // 更新人民币总值显示
+            document.getElementById('totalValueCNY').textContent = isAmountVisible
+                ? '¥' + totalValueCNY.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                 : '******';
 
             // 更新表格显示
             updateTable();
         }
 
-        // 修改 updateTable 函数
-        function updateTable() {
-            const tbody = document.getElementById('positionsList');
-            const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
-            
-            const sortedPositions = [...positions].sort((a, b) => b.total - a.total);
-            
-            tbody.innerHTML = sortedPositions.map((pos, index) => {
-                const percentage = (pos.total / totalValue * 100).toFixed(2);
-                const displayToken = pos.token.replace('USDT', '');
-                return `
-                    <tr>
-                        <td>${displayToken}</td>
-                        <td>${isAmountVisible ? pos.amount.toFixed(2) : '******'}</td>
-                        <td>$${pos.price.toFixed(2)}</td>
-                        <td>${isAmountVisible ? '$' + pos.total.toFixed(2) : '******'}</td>
-                        <td>${percentage}%</td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-primary" onclick="editPosition(${positions.indexOf(pos)})">
-                                    ${translations[currentLang]['edit']}
-                                </button>
-                                <button class="btn btn-danger" onclick="deletePosition(${positions.indexOf(pos)})">
-                                    ${translations[currentLang]['delete']}
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
         // 修改 updateStats 函数
         function updateStats() {
             const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+            const totalValueCNY = totalValue * usdtCnyRate;
             const positionsCount = positions.length;
             const now = new Date();
             const timeString = now.toLocaleString('zh-CN', { 
@@ -655,9 +691,16 @@
                 hour12: false
             }).replace(/\//g, '-');
 
+            // 更新美元总值
             document.getElementById('totalValue').textContent = isAmountVisible
                 ? '$' + totalValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                 : '******';
+            
+            // 更新人民币总值
+            document.getElementById('totalValueCNY').textContent = isAmountVisible
+                ? '¥' + totalValueCNY.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                : '******';
+            
             document.getElementById('totalPositions').textContent = positionsCount;
             document.getElementById('lastUpdate').textContent = timeString;
         }
@@ -674,13 +717,13 @@
 
             const option = {
                 title: {
-                    text: '持仓分布',
+                    text: translations[currentLang]['distributionChart'],  // 用翻���文本
                     left: 'center'
                 },
                 tooltip: {
                     trigger: 'item',
                     formatter: function(params) {
-                        return `${params.seriesName}<br/>
+                        return `${translations[currentLang]['positionCount']}<br/>
                                 ${params.name}: $${params.value.toFixed(2)} (${params.percent}%)`;
                     }
                 },
@@ -690,7 +733,7 @@
                     type: 'scroll'
                 },
                 series: [{
-                    name: '持仓占比',
+                    name: translations[currentLang]['positionCount'],  // 使用翻译文本
                     type: 'pie',
                     radius: '50%',
                     data: sortedData,
@@ -744,7 +787,7 @@
             editModal.hide();
         }
 
-        // 更新所有显示
+        // 更新所��显示
         function updateAll() {
             updateStats();
             updateTable();
@@ -790,6 +833,7 @@
 
         // 页面加载时从本地存储加载数据并更新价格
         window.addEventListener('load', async function() {
+            await getUsdtCnyRate(); // 获取初始汇率
             loadFromLocalStorage();
             if (positions.length > 0) {
                 await updateAllPrices();
@@ -870,6 +914,65 @@
         // 修改错误消息相关函数
         function showError(message) {
             return translations[currentLang][message] || message;
+        }
+
+        // 获取 USDT/CNY 汇率
+        async function getUsdtCnyRate() {
+            try {
+                // 使用 allorigins.win 作为代理
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
+                const apiUrl = encodeURIComponent('https://api.binance.com/api/v3/ticker/price?symbol=USDCUSDT');
+                
+                const response = await fetch(proxyUrl + apiUrl);
+                const wrapper = await response.json();
+                
+                if (wrapper.contents) {
+                    const data = JSON.parse(wrapper.contents);
+                    if (data.price) {
+                        usdtCnyRate = parseFloat(data.price) * 7.20; // 使用 USDC 价格 * 7.20 作为近似汇率
+                    }
+                }
+            } catch (error) {
+                console.error('获取 USDT/CNY 汇率失败:', error);
+            }
+        }
+
+        // 添加定期更新汇率
+        setInterval(async function() {
+            await getUsdtCnyRate();
+            updateStats();
+        }, 60000); // 每分钟更新一次汇率
+
+        // 修改 updateTable 函数
+        function updateTable() {
+            const tbody = document.getElementById('positionsList');
+            const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
+            
+            const sortedPositions = [...positions].sort((a, b) => b.total - a.total);
+            
+            tbody.innerHTML = sortedPositions.map((pos, index) => {
+                const percentage = (pos.total / totalValue * 100).toFixed(2);
+                const displayToken = pos.token.replace('USDT', '');
+                return `
+                    <tr>
+                        <td>${displayToken}</td>
+                        <td>${isAmountVisible ? pos.amount.toFixed(2) : '******'}</td>
+                        <td>$${pos.price.toFixed(2)}</td>
+                        <td>${isAmountVisible ? '$' + pos.total.toFixed(2) : '******'}</td>
+                        <td>${percentage}%</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-primary" onclick="editPosition(${positions.indexOf(pos)})">
+                                    ${translations[currentLang]['edit']}
+                                </button>
+                                <button class="btn btn-danger" onclick="deletePosition(${positions.indexOf(pos)})">
+                                    ${translations[currentLang]['delete']}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
     </script>
 </body>
