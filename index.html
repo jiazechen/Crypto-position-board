@@ -164,6 +164,7 @@
                                         <th>价格</th>
                                         <th>总额</th>
                                         <th>占比</th>
+                                        <th>涨跌幅</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
@@ -260,7 +261,8 @@
                 'add': '添加',
                 'manualPriceInput': '请输入价格',
                 'confirmPrice': '确认价格',
-                'getPriceFailed': '获取价格失败，请手动输入价格'
+                'getPriceFailed': '获取价格失败，请手动输入价格',
+                'priceChange': '涨跌幅',
             },
             'en': {
                 'totalValue': 'Total Value',
@@ -294,7 +296,8 @@
                 'add': 'Add',
                 'manualPriceInput': 'Enter price',
                 'confirmPrice': 'Confirm',
-                'getPriceFailed': 'Failed to get price, please enter manually'
+                'getPriceFailed': 'Failed to get price, please enter manually',
+                'priceChange': 'Change',
             }
         };
 
@@ -346,7 +349,7 @@
             });
             
             // 更新表格头部
-            const headers = ['token', 'amount', 'price', 'total', 'percentage', 'actions'];
+            const headers = ['token', 'amount', 'price', 'total', 'percentage', 'priceChange', 'actions'];
             document.querySelectorAll('thead th').forEach((th, index) => {
                 th.textContent = translations[currentLang][headers[index]];
             });
@@ -422,12 +425,36 @@
             return symbol + 'USDT';
         }
 
-        // 获取 MEX 价格
+        // 修改获取 Binance 价格的函数
+        async function getBinancePrices(symbols = []) {
+            if (symbols.length === 0) {
+                return new Map();
+            }
+
+            try {
+                // 使用 24hr ticker 接口获取价格和涨跌幅
+                const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+                const data = await response.json();
+                
+                // 创建价格和涨跌幅映射
+                const priceMap = new Map();
+                data.forEach(item => {
+                    priceMap.set(item.symbol, {
+                        price: parseFloat(item.lastPrice),
+                        priceChange: parseFloat(item.priceChangePercent)
+                    });
+                });
+                return priceMap;
+            } catch (error) {
+                throw new Error('获取 Binance 价格失败');
+            }
+        }
+
+        // 修改 MEX 价格获取函数
         async function getMexPrice(symbol) {
             try {
-                // 使用 allorigins.win 作为代理
                 const proxyUrl = 'https://api.allorigins.win/get?url=';
-                const apiUrl = encodeURIComponent('https://api.mexc.com/api/v3/ticker/price?symbol=MATHUSDT');
+                const apiUrl = encodeURIComponent('https://api.mexc.com/api/v3/ticker/24hr?symbol=MATHUSDT');
                 
                 const response = await fetch(proxyUrl + apiUrl);
                 const wrapper = await response.json();
@@ -438,12 +465,13 @@
 
                 const data = JSON.parse(wrapper.contents);
                 
-                if (!data.price) {
+                if (!data.lastPrice) {
                     throw new Error('未找到 MATH 交易对');
                 }
                 
                 return {
-                    price: parseFloat(data.price),
+                    price: parseFloat(data.lastPrice),
+                    priceChange: parseFloat(data.priceChangePercent),
                     symbol: 'MATHUSDT'
                 };
             } catch (error) {
@@ -451,55 +479,35 @@
             }
         }
 
-        // 修改获取 Binance 价格的函数
-        async function getBinancePrices(symbols = []) {
-            if (symbols.length === 0) {
-                return new Map();
-            }
-
-            try {
-                // 获取所有价格
-                const response = await fetch('https://api.binance.com/api/v3/ticker/price');
-                const data = await response.json();
-                
-                // 创建价格映射
-                const priceMap = new Map(data.map(item => [item.symbol, parseFloat(item.price)]));
-                return priceMap;
-            } catch (error) {
-                throw new Error('获取 Binance 价格失败');
-            }
-        }
-
         // 修改实时价格更新功能
         async function updateAllPrices() {
             try {
-                // 收集需要从 Binance 获取的交易对
                 const binanceSymbols = positions
                     .filter(pos => pos.token !== 'MATHUSDT')
                     .map(pos => pos.token);
 
-                // 批量获取 Binance 价格
                 const priceMap = await getBinancePrices(binanceSymbols);
 
-                // 更新所有持仓的价格
                 for (let i = 0; i < positions.length; i++) {
                     try {
-                        let price;
+                        let priceData;
                         if (positions[i].token === 'MATHUSDT') {
-                            // 获取 MATH 价格
-                            const mathPrice = await getMexPrice('MATH');
-                            price = mathPrice.price;
+                            const mathData = await getMexPrice('MATH');
+                            priceData = {
+                                price: mathData.price,
+                                priceChange: mathData.priceChange
+                            };
                         } else {
-                            // 从价格映射中获取价格
-                            price = priceMap.get(positions[i].token);
-                            if (!price) {
+                            priceData = priceMap.get(positions[i].token);
+                            if (!priceData) {
                                 console.error(`未找到 ${positions[i].token} 的价格`);
                                 continue;
                             }
                         }
                         
-                        positions[i].price = price;
-                        positions[i].total = positions[i].amount * price;
+                        positions[i].price = priceData.price;
+                        positions[i].total = positions[i].amount * priceData.price;
+                        positions[i].priceChange = priceData.priceChange;
                     } catch (error) {
                         console.error(`更新 ${positions[i].token} 价格失败:`, error);
                     }
@@ -524,8 +532,7 @@
 
             try {
                 const formattedSymbol = formatTokenSymbol(symbol);
-                // 直接获取单个交易对的价格
-                const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${formattedSymbol}`);
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${formattedSymbol}`);
                 const data = await response.json();
                 
                 if (data.code) {
@@ -533,7 +540,8 @@
                 }
                 
                 return {
-                    price: parseFloat(data.price),
+                    price: parseFloat(data.lastPrice),
+                    priceChange: parseFloat(data.priceChangePercent),
                     symbol: formattedSymbol
                 };
             } catch (error) {
@@ -656,7 +664,7 @@
             btn.innerHTML = `<i class="bi bi-eye${isAmountVisible ? '-slash' : ''}"></i>`;
         }
 
-        // ���改 updateAmountVisibility 函数
+        // 改 updateAmountVisibility 函数
         function updateAmountVisibility() {
             const totalValue = positions.reduce((sum, pos) => sum + pos.total, 0);
             const totalValueCNY = totalValue * usdtCnyRate;
@@ -717,7 +725,7 @@
 
             const option = {
                 title: {
-                    text: translations[currentLang]['distributionChart'],  // 用翻���文本
+                    text: translations[currentLang]['distributionChart'],  // 用翻文本
                     left: 'center'
                 },
                 tooltip: {
@@ -787,7 +795,7 @@
             editModal.hide();
         }
 
-        // 更新所��显示
+        // 更新所有显示
         function updateAll() {
             updateStats();
             updateTable();
@@ -868,19 +876,20 @@
             const sortedPositions = [...positions].sort((a, b) => b.total - a.total);
             const csvContent = [
                 // CSV 头部
-                ['Token', '数量', '价格(USDT)', '总额(USDT)', '占比(%)'],
+                ['Token', '数量', '价格(USDT)', '总额(USDT)', '占比(%)', '涨跌幅(%)'],
                 // 数据行
                 ...sortedPositions.map(pos => [
                     pos.token.replace('USDT', ''),
                     pos.amount.toFixed(2),
                     pos.price.toFixed(2),
                     pos.total.toFixed(2),
-                    ((pos.total / totalValue) * 100).toFixed(2)
+                    ((pos.total / totalValue) * 100).toFixed(2),
+                    (pos.priceChange || 0).toFixed(2)
                 ]),
                 // 空行
                 [],
                 // 汇总信息
-                ['总计', '', '', totalValue.toFixed(2), '100.00'],
+                ['总计', '', '', totalValue.toFixed(2), '100.00', ''],
                 ['导出时间', now.toLocaleString('zh-CN', {
                     year: 'numeric',
                     month: '2-digit',
@@ -953,6 +962,13 @@
             tbody.innerHTML = sortedPositions.map((pos, index) => {
                 const percentage = (pos.total / totalValue * 100).toFixed(2);
                 const displayToken = pos.token.replace('USDT', '');
+                
+                // 格式化涨跌幅显示
+                const priceChangeValue = pos.priceChange || 0;
+                const priceChangeFormatted = priceChangeValue.toFixed(2);
+                const priceChangeClass = priceChangeValue > 0 ? 'text-success' : priceChangeValue < 0 ? 'text-danger' : 'text-muted';
+                const priceChangeSign = priceChangeValue > 0 ? '+' : '';
+                
                 return `
                     <tr>
                         <td>${displayToken}</td>
@@ -960,6 +976,7 @@
                         <td>$${pos.price.toFixed(2)}</td>
                         <td>${isAmountVisible ? '$' + pos.total.toFixed(2) : '******'}</td>
                         <td>${percentage}%</td>
+                        <td class="${priceChangeClass}">${priceChangeSign}${priceChangeFormatted}%</td>
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-primary" onclick="editPosition(${positions.indexOf(pos)})">
