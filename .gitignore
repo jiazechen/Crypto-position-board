@@ -1,0 +1,30 @@
+# 忽略数据文件夹
+data/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE 文件
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# 依赖目录
+node_modules/
+vendor/
+
+# 日志文件
+*.log
+
+# 环境文件
+.env
+.env.*
+!.env.example
+
+# 其他
+*.tmp
+*.temp
+*.swp
+*~ 

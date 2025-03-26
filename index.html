@@ -123,6 +123,24 @@
             display: inline-flex;
             gap: 4px;  /* 按钮之间的间距 */
         }
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* 为 USD 入口添加特殊样式 */
+        a .stats-card {
+            border: 1px solid #e9ecef;
+        }
+        
+        a:hover .stats-card {
+            background-color: #f8f9fa;
+            border-color: #2196F3;  /* 改为蓝色系 */
+        }
+        
+        a .stats-card .stats-value {
+            font-size: 2rem;
+        }
     </style>
 </head>
 <body>
@@ -131,7 +149,7 @@
     </button>
     <div class="container mt-5">
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stats-card">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -145,17 +163,28 @@
                     <div class="stats-label">总持仓价值</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stats-card">
                     <div class="stats-value" id="totalPositions">0</div>
                     <div class="stats-label">持仓数量</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stats-card">
                     <div class="stats-value" id="lastUpdate">--</div>
                     <div class="stats-label">数据更新时间</div>
                 </div>
+            </div>
+            <div class="col-md-3">
+                <a href="usd.html" class="text-decoration-none" target="_blank">
+                    <div class="stats-card" style="cursor: pointer; transition: transform 0.2s;">
+                        <div class="stats-value" style="color: #2196F3; margin-bottom: 10px;">
+                            <i class="bi bi-currency-dollar"></i>
+                            <span style="font-size: 1.2rem; margin-left: 5px; font-weight: 500;">USD 理财管理</span>
+                        </div>
+                        <div class="stats-label" style="color: #757575;">点击进入</div>
+                    </div>
+                </a>
             </div>
         </div>
 
@@ -670,7 +699,7 @@
             }, 500);
         });
 
-        // 修改表单提交处
+        // 修改单提交处
         document.getElementById('positionForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -967,7 +996,7 @@
             document.body.removeChild(link);
         }
 
-        // 修改错��消息相关函数
+        // 修改错消息相关函数
         function showError(message) {
             return translations[currentLang][message] || message;
         }
@@ -1020,8 +1049,8 @@
                 
                 // 格式化价格显示
                 let formattedPrice;
-                if (pos.price < 0.01) {
-                    formattedPrice = pos.price.toFixed(4);
+                if (pos.price < 0.1) {
+                    formattedPrice = pos.price.toFixed(5);
                 } else if (pos.price >= 100) {
                     formattedPrice = Math.floor(pos.price).toString();
                 } else {
