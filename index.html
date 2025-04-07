@@ -490,145 +490,97 @@
             document.querySelector('#manualPriceInput button').textContent = translations[currentLang]['confirmPrice'];
         }
 
-        // 格式化 Token 符号
-        function formatTokenSymbol(symbol) {
+        // 修改 formatTokenSymbol 函数
+        function formatTokenSymbol(symbol, exchange = 'binance') {
             symbol = symbol.trim().toUpperCase();
-            // 如果已经以 USDT 结尾，直接返回
-            if (symbol.endsWith('USDT')) {
-                return symbol;
-            }
-            // 否则添加 USDT 后缀
-            return symbol + 'USDT';
-        }
-
-        // 修改获取 Binance 价格的函数
-        async function getBinancePrices(symbols = []) {
-            if (symbols.length === 0) {
-                return new Map();
-            }
-
-            try {
-                // 使用 24hr ticker 接口获取价格涨跌幅
-                const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-                const data = await response.json();
-                
-                // 创建价格和涨跌幅映射
-                const priceMap = new Map();
-                data.forEach(item => {
-                    priceMap.set(item.symbol, {
-                        price: parseFloat(item.lastPrice),
-                        priceChange: parseFloat(item.priceChangePercent)
-                    });
-                });
-                return priceMap;
-            } catch (error) {
-                throw new Error('获取 Binance 价格失败');
+            // 如果已经包含 USDT，移除它以获得纯净的代币名称
+            const pureSymbol = symbol.replace('USDT', '');
+            
+            switch (exchange.toLowerCase()) {
+                case 'binance':
+                    return pureSymbol + 'USDT';
+                case 'bitget':
+                    return pureSymbol + 'USDT';  // Bitget 使用大写，直接拼接
+                case 'coingecko':
+                    return pureSymbol.toLowerCase();
+                default:
+                    return pureSymbol + 'USDT';
             }
         }
 
-        // 修改 MEX 价格获取函数
-        async function getMexPrice(symbol) {
-            try {
-                const proxyUrl = 'https://api.allorigins.win/get?url=';
-                const apiUrl = encodeURIComponent('https://api.mexc.com/api/v3/ticker/24hr?symbol=MATHUSDT');
-                
-                const response = await fetch(proxyUrl + apiUrl);
-                const wrapper = await response.json();
-                
-                if (!wrapper.contents) {
-                    throw new Error('未找到 MATH 交易对');
-                }
-
-                const data = JSON.parse(wrapper.contents);
-                
-                if (!data.lastPrice) {
-                    throw new Error('未找到 MATH 交易对');
-                }
-                
-                return {
-                    price: parseFloat(data.lastPrice),
-                    priceChange: parseFloat(data.priceChangePercent),
-                    symbol: 'MATHUSDT'
-                };
-            } catch (error) {
-                throw new Error('获取 MEX 价格失败');
-            }
-        }
-
-        // 修改实时价格更新功能
-        async function updateAllPrices() {
-            try {
-                const binanceSymbols = positions
-                    .filter(pos => pos.token !== 'MATHUSDT')
-                    .map(pos => pos.token);
-
-                const priceMap = await getBinancePrices(binanceSymbols);
-
-                for (let i = 0; i < positions.length; i++) {
-                    try {
-                        let priceData;
-                        if (positions[i].token === 'MATHUSDT') {
-                            const mathData = await getMexPrice('MATH');
-                            priceData = {
-                                price: mathData.price,
-                                priceChange: mathData.priceChange
-                            };
-                        } else {
-                            priceData = priceMap.get(positions[i].token);
-                            if (!priceData) {
-                                console.error(`未找到 ${positions[i].token} 的价格`);
-                                continue;
-                            }
-                        }
-                        
-                        positions[i].price = priceData.price;
-                        positions[i].total = positions[i].amount * priceData.price;
-                        positions[i].priceChange = priceData.priceChange;
-                    } catch (error) {
-                        console.error(`更新 ${positions[i].token} 价格失败:`, error);
-                    }
-                }
-                updateAll();
-                saveToLocalStorage();
-            } catch (error) {
-                console.error('更新价格失败:', error);
-            }
-        }
-
-        // 修改单个代币价格获取函数
+        // 添加新的价格获取函数
         async function getBinancePrice(symbol) {
-            if (!symbol) {
-                throw new Error('请输入Token');
-            }
-
-            // 特殊处理 MATH
-            if (symbol.toUpperCase() === 'MATH') {
-                return getMexPrice(symbol);
-            }
-
             try {
                 const formattedSymbol = formatTokenSymbol(symbol);
                 const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${formattedSymbol}`);
                 const data = await response.json();
                 
                 if (data.code) {
-                    throw new Error('无效的交易对');
+                    throw new Error('Binance无效的交易对');
                 }
                 
                 return {
                     price: parseFloat(data.lastPrice),
                     priceChange: parseFloat(data.priceChangePercent),
-                    symbol: formattedSymbol
+                    source: 'Binance'
                 };
             } catch (error) {
-                if (error.message.includes('MEX')) {
-                    throw error;
-                }
-                throw new Error(`获取 ${formatTokenSymbol(symbol)} 价格失败`);
+                throw new Error('Binance获取价格失败');
             }
         }
 
-        // 修改价格更新函数
+        // 修改 getBitgetPrice 函数
+        async function getBitgetPrice(symbol) {
+            try {
+                const formattedSymbol = formatTokenSymbol(symbol, 'bitget');
+                console.log('Bitget formatted symbol:', formattedSymbol);
+                
+                const response = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${formattedSymbol}`);
+                const data = await response.json();
+                console.log('Bitget response:', data);
+                
+                if (data.code !== '00000' || !data.data || !data.data[0]) {
+                    throw new Error(`Bitget API 错误: ${data.msg || '无效的交易对'}`);
+                }
+                
+                const tickerData = data.data[0];
+                if (!tickerData.open || isNaN(parseFloat(tickerData.open))) {
+                    throw new Error('Bitget返回的价格数据无效');
+                }
+                
+                return {
+                    price: parseFloat(tickerData.open),
+                    priceChange: parseFloat(tickerData.change24h || 0) * 100, // 转换为百分比
+                    source: 'Bitget'
+                };
+            } catch (error) {
+                console.error('Bitget detailed error:', error);
+                throw new Error(`Bitget获取价格失败: ${error.message}`);
+            }
+        }
+
+        async function getCoingeckoPrice(symbol) {
+            try {
+                // 移除 USDT 后缀并转换为小写
+                const tokenId = symbol.replace('USDT', '').toLowerCase();
+                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenId}&vs_currencies=usd&include_24hr_change=true`);
+                const data = await response.json();
+                
+                if (!data[tokenId]) {
+                    throw new Error('Coingecko无效的交易对');
+                }
+                
+                return {
+                    price: data[tokenId].usd,
+                    priceChange: data[tokenId].usd_24h_change || 0,
+                    source: 'Coingecko'
+                };
+            } catch (error) {
+                throw new Error('Coingecko获取价格失败');
+            }
+        }
+
+        // 修改价格更新函数，实现多数据源依次尝试
         async function updatePriceInfo(symbol) {
             const priceInfo = document.getElementById('priceInfo');
             const tokenError = document.getElementById('tokenError');
@@ -643,7 +595,7 @@
                 return;
             }
 
-            const formattedSymbol = symbol.toUpperCase() === 'MATH' ? 'MATHUSDT' : formatTokenSymbol(symbol);
+            const formattedSymbol = symbol.toUpperCase();
             priceInfo.textContent = `正在获取 ${formattedSymbol} 价格...`;
             priceInfo.className = 'price-info loading';
             tokenError.textContent = '';
@@ -651,19 +603,92 @@
             manualPriceInput.classList.add('d-none');
 
             try {
-                const { price, symbol: returnedSymbol } = await getBinancePrice(symbol);
-                currentPrice = price;
-                const source = symbol.toUpperCase() === 'MATH' ? '(MEX)' : '(Binance)';
-                priceInfo.textContent = `${returnedSymbol} ${source}: $${price.toFixed(8)}`;
+                let priceData;
+                let errors = [];
+
+                // 1. 尝试从 Binance 获取价格
+                try {
+                    priceData = await getBinancePrice(symbol);
+                    console.log('Binance price success:', priceData);
+                } catch (error) {
+                    console.log('Binance error:', error.message);
+                    errors.push(error.message);
+                    
+                    // 2. 尝试从 Bitget 获取价格
+                    try {
+                        priceData = await getBitgetPrice(symbol);
+                        console.log('Bitget price success:', priceData);
+                    } catch (error) {
+                        console.log('Bitget error:', error.message);
+                        errors.push(error.message);
+                        
+                        // 3. 尝试从 Coingecko 获取价格
+                        try {
+                            priceData = await getCoingeckoPrice(symbol);
+                            console.log('Coingecko price success:', priceData);
+                        } catch (error) {
+                            console.log('Coingecko error:', error.message);
+                            errors.push(error.message);
+                        }
+                    }
+                }
+
+                if (!priceData) {
+                    throw new Error(`无法获取价格，所有数据源均失败:\n${errors.join('\n')}`);
+                }
+
+                currentPrice = priceData.price;
+                priceInfo.textContent = `${formattedSymbol} (${priceData.source}): $${priceData.price.toFixed(8)}`;
                 priceInfo.className = 'price-info';
                 submitBtn.disabled = false;
                 manualPriceInput.classList.add('d-none');
             } catch (error) {
-                priceInfo.textContent = translations[currentLang]['getPriceFailed'];
+                console.error('Final error:', error.message);
+                priceInfo.textContent = '获取价格失败，请手动输入';
                 priceInfo.className = 'price-info text-danger';
                 tokenError.textContent = error.message;
                 manualPriceInput.classList.remove('d-none');
                 submitBtn.disabled = true;
+            }
+        }
+
+        // 修改批量价格更新函数
+        async function updateAllPrices() {
+            try {
+                for (let position of positions) {
+                    try {
+                        let priceData;
+                        
+                        // 依次尝试三个数据源
+                        try {
+                            priceData = await getBinancePrice(position.token);
+                        } catch (error) {
+                            try {
+                                priceData = await getBitgetPrice(position.token);
+                            } catch (error) {
+                                try {
+                                    priceData = await getCoingeckoPrice(position.token);
+                                } catch (error) {
+                                    console.error(`所有数据源都无法获取 ${position.token} 的价格`);
+                                    continue;
+                                }
+                            }
+                        }
+
+                        if (priceData) {
+                            position.price = priceData.price;
+                            position.priceChange = priceData.priceChange;
+                            position.total = position.amount * priceData.price;
+                        }
+                    } catch (error) {
+                        console.error(`更新 ${position.token} 价格失败:`, error);
+                    }
+                }
+                
+                updateAll();
+                saveToLocalStorage();
+            } catch (error) {
+                console.error('更新价格失败:', error);
             }
         }
 
