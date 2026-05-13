@@ -7,341 +7,505 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" type="image/svg+xml">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        :root {
+            --bg: #f0eee6;
+            --surface: #faf9f5;
+            --surface-2: #f5f3eb;
+            --surface-3: #ece9dd;
+            --border: #d9d4c7;
+            --border-strong: #b8b1a0;
+            --text: #1a1a18;
+            --text-2: #5d5b56;
+            --text-3: #8a877f;
+            --accent: #c1633e;
+            --accent-hover: #a8542e;
+            --accent-bg: #ede0d6;
+            --success: #5a7d4f;
+            --success-bg: #e6eadd;
+            --danger: #b04a3f;
+            --danger-bg: #ecdcd5;
+            --warning: #d4a017;
+            --warning-hover: #b8861f;
+        }
+
+        html, body { min-height: 100%; }
         body {
-            background-color: #f8f9fa;
-            color: #333;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                         'PingFang SC', 'Hiragino Sans GB',
+                         'Microsoft YaHei UI', 'Microsoft YaHei',
+                         'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .container {
-            padding: 30px;
+            padding: 28px 24px;
             max-width: 1400px;
         }
+
+        /* ── Page header ── */
         .page-header {
-            background: linear-gradient(135deg, #4CAF50, #2196F3);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: transparent;
+            color: var(--text);
+            padding: 0 0 20px 0;
+            border-radius: 0;
+            margin-bottom: 24px;
+            box-shadow: none;
+            border-bottom: 1px solid var(--border);
         }
         .page-header h2 {
             margin: 0;
+            font-family: 'Source Serif 4', Georgia,
+                         'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', serif;
             font-weight: 600;
+            font-size: 1.5rem;
+            letter-spacing: -0.01em;
+            color: var(--text);
+            text-align: center;
         }
+        .breadcrumb-nav {
+            margin-bottom: 14px;
+        }
+        .back-link {
+            color: var(--text-3);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 0;
+            background: transparent;
+            border: none;
+            transition: color 0.15s;
+        }
+        .back-link i {
+            font-size: 0.88rem;
+            transition: transform 0.15s;
+        }
+        .back-link:hover {
+            color: var(--accent);
+        }
+        .back-link:hover i {
+            transform: translateX(-3px);
+        }
+
+        /* ── Dashboard cards ── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .dashboard-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px 22px;
+            text-align: left;
+            box-shadow: none;
+            transition: border-color 0.15s;
+        }
+        .dashboard-item:hover {
+            transform: none;
+            border-color: var(--border-strong);
+            box-shadow: none;
+        }
+        .dashboard-title {
+            color: var(--text-3);
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .dashboard-value {
+            font-family: 'Source Serif 4', Georgia,
+                         'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', serif;
+            font-size: 1.7rem;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: -0.015em;
+            line-height: 1.15;
+            font-feature-settings: 'tnum' on, 'lnum' on;
+        }
+        .dashboard-value span {
+            font-family: 'Inter', sans-serif !important;
+            color: var(--text-3);
+            font-weight: 400;
+            font-size: 1.05rem;
+            margin-right: 2px;
+        }
+
+        /* ── Input section ── */
         .input-section {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            margin-bottom: 30px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px 22px;
+            box-shadow: none;
+            margin-bottom: 24px;
+        }
+        .input-section.editing {
+            background: var(--accent-bg);
+            border-color: var(--accent);
         }
         .input-group {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 100%;
             gap: 10px;
         }
-        .input-group input {
+        .input-group input.form-control {
+            border: 1px solid var(--border);
             border-radius: 6px;
-            border: 1px solid #dee2e6;
-            padding: 10px 15px;
+            padding: 9px 14px;
+            font-size: 0.9rem;
+            color: var(--text);
+            background: var(--surface);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .input-group input.form-control::placeholder { color: var(--text-3); }
+        .input-group input.form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(193,99,62,0.12);
+            background: var(--surface);
+            outline: none;
         }
         .input-group .btn-primary {
-            background: #4CAF50;
-            border: none;
-            padding: 10px 25px;
+            background: var(--accent);
+            border: 1px solid var(--accent);
             border-radius: 6px;
+            padding: 9px 22px;
+            font-size: 0.875rem;
             font-weight: 500;
+            color: #faf9f5;
+            box-shadow: none;
+            transition: background 0.15s, border-color 0.15s;
         }
         .input-group .btn-primary:hover {
-            background: #45a049;
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: #faf9f5;
         }
+        .input-section.editing .btn-primary {
+            background: var(--warning);
+            border-color: var(--warning);
+            color: var(--text);
+        }
+        .input-section.editing .btn-primary:hover {
+            background: var(--warning-hover);
+            border-color: var(--warning-hover);
+            color: var(--text);
+        }
+        .edit-title {
+            color: var(--accent);
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            padding-left: 2px;
+        }
+
+        /* ── Chart container ── */
         .chart-container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0;
+            box-shadow: none;
             display: flex;
-            gap: 30px;
+            gap: 0;
+            overflow: hidden;
         }
         #tableContainer {
             flex: 1;
+            padding: 20px 22px;
+            min-width: 0;
         }
         #pieChart {
-            width: 500px;
-            height: 400px;
-            border-left: 1px solid #eee;
-            padding-left: 20px;
+            width: 520px;
+            height: 440px;
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        /* ── Table ── */
+        .table-header {
+            padding: 0 0 12px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .table-header h5 {
+            margin: 0;
+            font-family: 'Source Serif 4', Georgia,
+                         'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: -0.01em;
         }
         .table {
             margin-bottom: 0;
+            font-size: 0.88rem;
+            color: var(--text);
         }
-        .table th {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            padding: 8px 12px;
+        .table thead th {
+            background: transparent;
+            border-bottom: 1px solid var(--border);
+            border-top: 0;
+            padding: 10px 14px;
+            font-size: 0.68rem;
             font-weight: 600;
-            font-size: 0.9rem;
+            color: var(--text-3);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
             white-space: nowrap;
         }
-        .table td {
-            padding: 12px;
+        .table tbody td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            border-top: 0;
             vertical-align: middle;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 500;
+            font-feature-settings: 'tnum' on, 'lnum' on;
+            white-space: nowrap;
         }
+        .table tbody td:first-child {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            background-color: transparent;
+            color: var(--text);
+        }
+        .table > tbody > tr:hover > td {
+            background: var(--surface-2);
+        }
+        .table tbody tr:last-child td { border-bottom: 1px solid var(--border); }
         .table a {
-            color: #2196F3;
+            color: var(--accent);
             text-decoration: none;
+            font-weight: 600;
         }
         .table a:hover {
+            color: var(--accent-hover);
             text-decoration: underline;
         }
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 0.75rem;
-            border-radius: 4px;
+
+        /* 总计行 */
+        .table tfoot tr.table-info,
+        .table tfoot tr.table-info:hover {
+            background: var(--surface-2) !important;
+            border-top: none;
         }
-        .btn-danger {
-            background-color: #ff6b6b;
-            border: none;
-        }
-        .btn-danger:hover {
-            background-color: #ff5252;
-        }
-        .btn-edit {
-            background-color: #4dabf7;
-            border: none;
-            color: white;
-        }
-        .btn-edit:hover {
-            background-color: #339af0;
-            color: white;
-        }
-        .action-buttons {
+        .table tfoot tr.table-info td {
+            background: var(--surface-2) !important;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--text);
+            padding: 14px;
+            border-bottom: 0;
+            border-top: 1px solid var(--border-strong);
             white-space: nowrap;
         }
-        .table-info {
-            background: linear-gradient(to right, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.15)) !important;
-            border-top: 2px solid #2196F3;
-        }
-        .table-info td {
-            font-weight: 600;
-            color: #212121;
-            padding: 15px 12px;
-        }
-        .table-info td:first-child {
+        .table tfoot tr.table-info td:first-child {
+            font-family: 'Source Serif 4', Georgia,
+                         'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', serif;
             font-weight: 700;
-            color: #000000;
+            color: var(--text);
         }
-        .table-info:hover {
-            background: linear-gradient(to right, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.2)) !important;
-        }
-        @media (max-width: 1200px) {
-            .chart-container {
-                flex-direction: column;
-            }
-            #pieChart {
-                width: 100%;
-                border-left: none;
-                border-top: 1px solid #eee;
-                padding-left: 0;
-                padding-top: 20px;
-            }
-        }
+
+        /* ── Sortable headers ── */
         .sortable {
             cursor: pointer;
             position: relative;
-            padding-right: 16px !important;
+            padding-right: 22px !important;
+            transition: color 0.15s;
         }
-        
+        .sortable:hover {
+            color: var(--text);
+        }
         .sortable:after {
             content: '⇅';
             font-size: 10px;
             position: absolute;
-            right: 4px;
+            right: 6px;
             top: 50%;
             transform: translateY(-50%);
-            opacity: 0.4;
+            opacity: 0.35;
             line-height: 1;
         }
-        
         .sortable.asc:after {
             content: '↑';
-            opacity: 0.8;
+            opacity: 1;
+            color: var(--accent);
+            font-weight: 700;
         }
-        
         .sortable.desc:after {
             content: '↓';
-            opacity: 0.8;
+            opacity: 1;
+            color: var(--accent);
+            font-weight: 700;
         }
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
+
+        /* ── Action buttons ── */
+        .action-buttons {
+            white-space: nowrap;
+            display: inline-flex;
+            gap: 4px;
         }
-        
-        .dashboard-item {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            text-align: center;
-            transition: transform 0.2s;
+        .btn-sm {
+            padding: 5px 8px;
+            font-size: 0.82rem;
+            border-radius: 5px;
+            line-height: 1;
+            font-weight: 500;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
-        
-        .dashboard-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        .btn-sm i { font-size: 0.85rem; }
+        .btn-edit {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-3);
         }
-        
-        .dashboard-title {
-            color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+        .btn-edit:hover {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            color: var(--accent);
         }
-        
-        .dashboard-value {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #2196F3;
+        .btn-danger {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-3);
         }
-        
+        .btn-danger:hover {
+            background: var(--danger-bg);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        @media (max-width: 1400px) {
+            .chart-container {
+                flex-direction: column;
+            }
+            #pieChart {
+                width: 100% !important;
+                border-left: none;
+                border-top: 1px solid var(--border);
+                padding: 20px;
+            }
+        }
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
             }
         }
-        .table-header {
-            padding: 0 0 15px 0;
-            margin-bottom: 5px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
-        .table-header h5 {
+
+        /* ── Language switch ── */
+        .btn-outline-primary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-3);
             margin: 0;
-            font-size: 1.1rem;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .btn-outline-primary:hover {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .btn-outline-primary:focus { box-shadow: none; }
+        .language-switch {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 1000;
+            padding: 5px 12px;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: #333;
+            letter-spacing: 0.08em;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-2);
+            box-shadow: none;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
-        .input-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .input-row {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .input-field {
-            flex: 1;
-            min-width: 200px;
+        .language-switch:hover {
+            transform: none;
+            background: var(--surface-2);
+            color: var(--text);
+            border-color: var(--border-strong);
+            box-shadow: none;
         }
 
-        .input-field label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .input-field input {
-            width: 100%;
-        }
-
-        .input-action {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .input-action .btn {
-            min-width: 120px;
-        }
-
-        /* 编辑状态下的样式 */
-        .input-panel.editing {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .input-panel.editing .btn-primary {
-            background-color: #ffc107;
-            color: #000;
-        }
-
-        .input-panel.editing .btn-primary:hover {
-            background-color: #ffb300;
-        }
-
-        .edit-title {
-            color: #2196F3;
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-bottom: 10px;
-            padding-left: 5px;
-        }
-
-        .input-section.editing {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 15px;
-        }
-
-        .input-section.editing .btn-primary {
-            background-color: #ffc107;
-            border-color: #ffc107;
-            color: #000;
-        }
-
-        .input-section.editing .btn-primary:hover {
-            background-color: #ffb300;
-            border-color: #ffb300;
-        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+        ::selection { background: var(--accent-bg); color: var(--text); }
     </style>
 </head>
 <body>
+    <button class="btn btn-outline-primary language-switch" onclick="toggleLanguage()" id="languageBtn">CN</button>
     <div class="container">
+        <div class="breadcrumb-nav">
+            <a href="index.html" class="back-link" id="backLink">
+                <i class="bi bi-arrow-left"></i> <span id="backLinkText">返回主页</span>
+            </a>
+        </div>
         <div class="page-header">
-            <h2 class="text-center">USD 仓位管理</h2>
+            <h2 id="pageHeader">USD 理财管理</h2>
         </div>
 
         <!-- 添加数据看板 -->
         <div class="dashboard">
             <div class="dashboard-item">
-                <div class="dashboard-title">每日利息</div>
+                <div class="dashboard-title" id="dailyTitle">每日利息</div>
                 <div class="dashboard-value" id="dashboardDaily">0.00</div>
             </div>
             <div class="dashboard-item">
-                <div class="dashboard-title">每月利息</div>
+                <div class="dashboard-title" id="monthlyTitle">每月利息</div>
                 <div class="dashboard-value" id="dashboardMonthly">0.00</div>
             </div>
             <div class="dashboard-item">
-                <div class="dashboard-title">每年利息</div>
+                <div class="dashboard-title" id="yearlyTitle">每年利息</div>
                 <div class="dashboard-value" id="dashboardYearly">0.00</div>
             </div>
         </div>
 
         <div class="input-section">
-            <div class="edit-title" style="display: none;">正在编辑</div>
+            <div class="edit-title" id="editTitle" style="display: none;">正在编辑</div>
             <div class="input-group">
                 <input type="text" class="form-control" id="nameInput" placeholder="名称">
                 <input type="text" class="form-control" id="urlInput" placeholder="项目链接">
                 <input type="number" class="form-control" id="amountInput" placeholder="数量">
                 <input type="number" class="form-control" id="aprInput" placeholder="预计年化收益(%)">
                 <input type="number" class="form-control" id="redeemDaysInput" placeholder="赎回天数">
-                <button class="btn btn-primary" onclick="addPosition()">添加仓位</button>
+                <button class="btn btn-primary" id="actionBtn" onclick="addPosition()">添加仓位</button>
             </div>
         </div>
 
         <div class="chart-container">
             <div id="tableContainer">
                 <div class="table-header">
-                    <h5>持仓列表</h5>
+                    <h5 id="positionListTitle">持仓列表</h5>
                 </div>
                 <table class="table table-striped">
                     <thead>
@@ -353,7 +517,7 @@
                             <th class="sortable" data-sort="redeemDays">赎回天数</th>
                             <th class="sortable" data-sort="percentage">占比(%)</th>
                             <th class="sortable" data-sort="createTime">创建时间</th>
-                            <th>操作</th>
+                            <th id="colActions">操作</th>
                         </tr>
                     </thead>
                     <tbody id="positionList"></tbody>
@@ -376,6 +540,82 @@
     </div>
 
     <script>
+        // ── i18n ──
+        const translations = {
+            'zh': {
+                'pageTitle': 'USD 仓位管理',
+                'header': 'USD 理财管理',
+                'backHome': '返回主页',
+                'daily': '每日利息',
+                'monthly': '每月利息',
+                'yearly': '每年利息',
+                'editing': '正在编辑',
+                'name': '名称',
+                'url': '项目链接',
+                'amount': '数量',
+                'apr': '预计年化收益(%)',
+                'redeemDays': '赎回天数',
+                'addPosition': '添加仓位',
+                'saveEdit': '保存修改',
+                'positionList': '持仓列表',
+                'colName': '名称',
+                'colAmount': '数量',
+                'colApr': '预计年化(%)',
+                'colDaily': '每日利息',
+                'colRedeem': '赎回天数',
+                'colPercent': '占比(%)',
+                'colCreateTime': '创建时间',
+                'colActions': '操作',
+                'total': '总计',
+                'edit': '编辑',
+                'delete': '删除',
+                'days': '天',
+                'fillAll': '请填写完整信息！',
+                'switchLabel': 'CN'
+            },
+            'en': {
+                'pageTitle': 'USD Position Management',
+                'header': 'USD Management',
+                'backHome': 'Back to Home',
+                'daily': 'Daily Interest',
+                'monthly': 'Monthly Interest',
+                'yearly': 'Yearly Interest',
+                'editing': 'Editing',
+                'name': 'Name',
+                'url': 'Project URL',
+                'amount': 'Amount',
+                'apr': 'Estimated APR (%)',
+                'redeemDays': 'Redeem Days',
+                'addPosition': 'Add Position',
+                'saveEdit': 'Save',
+                'positionList': 'Position List',
+                'colName': 'Name',
+                'colAmount': 'Amount',
+                'colApr': 'APR (%)',
+                'colDaily': 'Daily Interest',
+                'colRedeem': 'Redeem Days',
+                'colPercent': 'Percentage (%)',
+                'colCreateTime': 'Create Time',
+                'colActions': 'Actions',
+                'total': 'Total',
+                'edit': 'Edit',
+                'delete': 'Delete',
+                'days': 'd',
+                'fillAll': 'Please fill in all fields!',
+                'switchLabel': 'EN'
+            }
+        };
+
+        // URL 参数优先，否则读 localStorage，否则默认 zh
+        (function() {
+            const fromUrl = new URLSearchParams(window.location.search).get('lang');
+            if (fromUrl === 'zh' || fromUrl === 'en') {
+                localStorage.setItem('language', fromUrl);
+            }
+        })();
+        let currentLang = localStorage.getItem('language') || 'zh';
+        function t(key) { return translations[currentLang][key] || key; }
+
         let positions = [];
         const pieChart = echarts.init(document.getElementById('pieChart'));
         const STORAGE_KEY = 'usdPositions';
@@ -386,6 +626,49 @@
             direction: 'desc'
         };
 
+        function applyLanguage() {
+            document.title = t('pageTitle');
+            document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+            document.getElementById('pageHeader').textContent = t('header');
+            document.getElementById('backLinkText').textContent = t('backHome');
+            document.getElementById('dailyTitle').textContent = t('daily');
+            document.getElementById('monthlyTitle').textContent = t('monthly');
+            document.getElementById('yearlyTitle').textContent = t('yearly');
+            document.getElementById('nameInput').placeholder = t('name');
+            document.getElementById('urlInput').placeholder = t('url');
+            document.getElementById('amountInput').placeholder = t('amount');
+            document.getElementById('aprInput').placeholder = t('apr');
+            document.getElementById('redeemDaysInput').placeholder = t('redeemDays');
+            document.getElementById('positionListTitle').textContent = t('positionList');
+            document.getElementById('colActions').textContent = t('colActions');
+            document.getElementById('languageBtn').textContent = t('switchLabel');
+
+            const thLabels = {
+                name: 'colName',
+                amount: 'colAmount',
+                apr: 'colApr',
+                dailyInterest: 'colDaily',
+                redeemDays: 'colRedeem',
+                percentage: 'colPercent',
+                createTime: 'colCreateTime'
+            };
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const key = thLabels[th.dataset.sort];
+                if (key) th.textContent = t(key);
+            });
+
+            const actionBtn = document.getElementById('actionBtn');
+            const editing = document.querySelector('.input-section').classList.contains('editing');
+            actionBtn.textContent = editing ? t('saveEdit') : t('addPosition');
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('language', currentLang);
+            applyLanguage();
+            updatePositionList(false); // 重渲染表格内的动态文本（天/编辑/删除/总计）
+        }
+
         function formatAmount(amount) {
             if (amount >= 1000) {
                 return (amount / 1000).toFixed(1) + 'k';
@@ -393,49 +676,89 @@
             return amount.toFixed(2);
         }
 
+        // Claude 风暖色调色板
+        const CHART_PALETTE = [
+            '#c1633e', '#8b6f47', '#7d8a5c', '#b8956a', '#5c7a8a',
+            '#9a6b50', '#c19a5b', '#7a6a8a', '#6b8e6e', '#a3826b',
+            '#a86c5c', '#8a8a5c', '#b08570', '#6e7a5c', '#9c8868'
+        ];
+
         function updatePieChart() {
+            const sortedData = [...positions]
+                .map(p => ({ name: p.name, value: p.amount }))
+                .sort((a, b) => b.value - a.value);
+
             const option = {
-                title: {
-                    text: 'USD 仓位分布',
-                    left: 'center'
-                },
+                color: CHART_PALETTE,
+                backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'item',
+                    backgroundColor: '#faf9f5',
+                    borderColor: '#b8b1a0',
+                    borderWidth: 1,
+                    padding: [10, 14],
+                    extraCssText: 'box-shadow: 0 4px 16px rgba(26,26,24,0.08); border-radius: 6px;',
+                    textStyle: { color: '#1a1a18', fontSize: 12, fontFamily: 'Inter, sans-serif' },
                     formatter: function(params) {
-                        return `${params.name}: ${formatAmount(params.value)} (${params.percent}%)`
+                        return `<div style="font-weight:600;margin-bottom:4px;color:#1a1a18;font-family:'Source Serif 4',serif;font-size:13px;">${params.name}</div>
+                                <div style="font-family:'JetBrains Mono',monospace;color:#5d5b56;font-size:11px;">
+                                  $${formatAmount(params.value)}
+                                  <span style="color:#c1633e;margin-left:6px;font-weight:600;">${params.percent}%</span>
+                                </div>`;
                     }
                 },
-                legend: {
-                    orient: 'vertical',
-                    left: 'left',
-                    textStyle: {
-                        fontSize: 12
-                    }
-                },
+                legend: { show: false },
                 series: [{
                     type: 'pie',
-                    radius: '70%',
-                    data: positions.map(p => ({
-                        name: p.name,
-                        value: p.amount
-                    })),
+                    radius: '60%',
+                    center: ['50%', '50%'],
+                    avoidLabelOverlap: true,
+                    minShowLabelAngle: 3,
+                    itemStyle: {
+                        borderColor: '#faf9f5',
+                        borderWidth: 1
+                    },
+                    data: sortedData,
                     label: {
                         show: true,
-                        position: 'outside',      // 标签位置改为外部
-                        formatter: '{b}',         // 只显示名称
-                        fontSize: 12,            // 字体大小
-                        padding: [4, 8],         // 文字内边距
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)'  // 半透明白色背景
+                        formatter: '{name|{b}}\n{pct|{d}%}',
+                        rich: {
+                            name: {
+                                fontSize: 17,
+                                fontWeight: 600,
+                                color: '#1a1a18',
+                                fontFamily: '"Source Serif 4", Georgia, "PingFang SC", "Microsoft YaHei", serif',
+                                lineHeight: 22,
+                                padding: [0, 0, 3, 0]
+                            },
+                            pct: {
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: '#8a877f',
+                                fontFamily: '"JetBrains Mono", "Menlo", monospace',
+                                lineHeight: 14
+                            }
+                        }
                     },
                     labelLine: {
-                        show: true,
-                        length: 10,             // 第一段引导线长度
-                        length2: 10,            // 第二段引导线长度
-                        smooth: true            // 平滑引导线
+                        lineStyle: { color: '#b8b1a0', width: 1 },
+                        length: 12,
+                        length2: 14
+                    },
+                    emphasis: {
+                        scale: true,
+                        scaleSize: 8,
+                        itemStyle: { shadowBlur: 0 },
+                        label: {
+                            rich: {
+                                name: { fontSize: 18, fontWeight: 700, color: '#c1633e' },
+                                pct: { fontSize: 12, fontWeight: 600, color: '#1a1a18' }
+                            }
+                        }
                     }
                 }]
             };
-            pieChart.setOption(option);
+            pieChart.setOption(option, true);
         }
 
         // 添加计算每日利息的函数
@@ -499,17 +822,17 @@
         function updateDashboard(totalDailyInterest) {
             // 更新每日利息
             document.getElementById('dashboardDaily').innerHTML = 
-                '<span style="font-size: 1rem">$</span> ' + totalDailyInterest.toFixed(2);
+                '<span>$</span> ' + totalDailyInterest.toFixed(2);
             
             // 更新每月利息（按30天计算）
             const monthlyInterest = totalDailyInterest * 30;
             document.getElementById('dashboardMonthly').innerHTML = 
-                '<span style="font-size: 1rem">$</span> ' + monthlyInterest.toFixed(2);
+                '<span>$</span> ' + monthlyInterest.toFixed(2);
             
             // 更新每年利息（按365天计算）
             const yearlyInterest = totalDailyInterest * 365;
             document.getElementById('dashboardYearly').innerHTML = 
-                '<span style="font-size: 1rem">$</span> ' + yearlyInterest.toFixed(2);
+                '<span>$</span> ' + yearlyInterest.toFixed(2);
         }
 
         function updatePositionList(doSort = true) {
@@ -531,21 +854,22 @@
                     `<a href="${position.url}" target="_blank">${position.name}</a>` : 
                     position.name;
                 
+                const dateLocale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
                 return `
                     <tr>
                         <td>${nameDisplay}</td>
                         <td>${formatAmount(position.amount)}</td>
                         <td>${position.apr.toFixed(1)}%</td>
                         <td>${dailyInterest.toFixed(2)}</td>
-                        <td>${position.redeemDays} 天</td>
+                        <td>${position.redeemDays} ${t('days')}</td>
                         <td>${percentage}%</td>
-                        <td>${new Date(position.createTime).toLocaleDateString()}</td>
+                        <td>${new Date(position.createTime).toLocaleDateString(dateLocale)}</td>
                         <td class="action-buttons">
-                            <button class="btn btn-edit btn-sm" onclick="editPosition(${index})">
-                                编辑
+                            <button class="btn btn-edit btn-sm" onclick="editPosition(${index})" title="${t('edit')}">
+                                <i class="bi bi-pencil-square"></i>
                             </button>
-                            <button class="btn btn-danger btn-sm ms-1" onclick="deletePosition(${index})">
-                                删除
+                            <button class="btn btn-danger btn-sm" onclick="deletePosition(${index})" title="${t('delete')}">
+                                <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
@@ -558,7 +882,7 @@
 
             // 修改总计行，移除更新时间列对应的空单元格
             document.querySelector('.table-info').innerHTML = `
-                <td><strong>总计</strong></td>
+                <td><strong>${t('total')}</strong></td>
                 <td id="totalAmount">$ ${formatAmount(totalAmount)}</td>
                 <td id="avgApr">${weightedApr.toFixed(1)}%</td>
                 <td id="totalDailyInterest">$ ${totalDailyInterest.toFixed(2)}</td>
@@ -580,7 +904,7 @@
             const redeemDaysInput = document.getElementById('redeemDaysInput');
             
             if (!nameInput.value || !amountInput.value || !aprInput.value || !redeemDaysInput.value) {
-                alert('请填写完整信息！');
+                alert(t('fillAll'));
                 return;
             }
 
@@ -631,14 +955,14 @@
             // 显示编辑标题
             const editTitle = document.querySelector('.edit-title');
             editTitle.style.display = 'block';
-            editTitle.textContent = `正在编辑: ${position.name}`;
+            editTitle.textContent = `${t('editing')}: ${position.name}`;
 
             positions.splice(index, 1);
             position.updateTime = new Date().getTime();
             const createTime = position.createTime;
 
             const addButton = document.querySelector('.input-group button');
-            addButton.textContent = '保存修改';
+            addButton.textContent = t('saveEdit');
             addButton.onclick = function() {
                 const newPosition = {
                     name: document.getElementById('nameInput').value,
@@ -664,7 +988,7 @@
                 
                 inputSection.classList.remove('editing');
                 editTitle.style.display = 'none';
-                addButton.textContent = '添加仓位';
+                addButton.textContent = t('addPosition');
                 addButton.onclick = addPosition;
             };
         }
@@ -684,6 +1008,7 @@
         }
 
         loadData();
+        applyLanguage();
 
         window.addEventListener('resize', function() {
             pieChart.resize();
